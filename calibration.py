@@ -74,4 +74,94 @@ def CIR_calibration():
     return opt
 
 
+def gamma(kappa_r, sigma_r):
+    ''' Help Function. '''
+    return np.sqrt(kappa_r ** 2 + 2 * sigma_r ** 2)
+
+
+def b1(alpha):
+    ''' Help Function. '''
+    kappa_r, theta_r, sigma_r, r0, T = alpha
+    g = gamma(kappa_r, sigma_r)
+    return (((2 * g * math.exp((kappa_r + g) * T / 2)) /
+             (2 * g + (kappa_r + g) * (math.exp(g * T) - 1))) **
+            (2 * kappa_r * theta_r / sigma_r ** 2))
+
+
+def b2(alpha):
+    ''' Help Function. '''
+    kappa_r, theta_r, sigma_r, r0, T = alpha
+    g = gamma(kappa_r, sigma_r)
+    return ((2 * (math.exp(g * T) - 1)) /
+            (2 * g + (kappa_r + g) * (math.exp(g * T) - 1)))
+
+
+def B(alpha):
+    ''' Function to value unit zero-coupon bonds in Cox-Ingersoll-Ross (1985)
+    model.
+
+    Parameters
+    ==========
+    r0: float
+        initial short rate
+    kappa_r: float
+        mean-reversion factor
+    theta_r: float
+        long-run mean of short rate
+    sigma_r: float
+        volatility of short rate
+    T: float
+        time horizon/interval
+
+    Returns
+    =======
+    zcb_value: float
+        zero-coupon bond present value
+    '''
+    b_1 = b1(alpha)
+    b_2 = b2(alpha)
+    kappa_r, theta_r, sigma_r, r0, T = alpha
+    return b_1 * math.exp(-b_2 * r0)
+  
+kappa_r, theta_r, sigma_r = CIR_calibration()
+
+def H93_call_value(S0, K, T, r, kappa_v, theta_v, sigma_v, rho, v0):
+    ''' Valuation of European call option in H93 model via Lewis (2001)
+    Fourier-based approach.
+
+    Parameters
+    ==========
+    S0: float
+        initial stock/index level
+    K: float
+        strike price
+    T: float
+        time-to-maturity (for t=0)
+    r: float
+        constant risk-free short rate
+    kappa_v: float
+        mean-reversion factor
+    theta_v: float
+        long-run mean of variance
+    sigma_v: float
+        volatility of variance
+    rho: float
+        correlation between variance and stock/index level
+    v0: float
+        initial level of variance
+
+    Returns
+    =======
+    call_value: float
+        present value of European call option
+
+    '''
+    int_value = quad(lambda u: H93_int_func(u, S0, K, T, r, kappa_v,
+                                            theta_v, sigma_v, rho, v0),
+                     0, np.inf, limit=250)[0]
+    call_value = max(0, S0 - np.exp(-r * T) * np.sqrt(S0 * K) /
+                     np.pi * int_value)
+    return call_value
+
+
 
